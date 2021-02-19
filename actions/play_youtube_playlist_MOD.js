@@ -34,23 +34,17 @@ module.exports = {
 
   init () {},
 
-  action (cache) {
+  async action (cache) {
     const data = cache.actions[cache.index]
     const { Audio } = this.getDBM()
     const Mods = this.getMods()
     const url = this.evalMessage(data.url, cache)
     const maxvideos = this.evalMessage(data.maxvid, cache) || 250
-    const ytpl = Mods.require('ytpl') // be sure you have the latest YTPL, this was modified with 2.0.3 in mind
+    const ytpl = Mods.require('ytpl') // be sure you have the latest YTPL, this was modified with 2.0.5 in mind
     const { msg } = cache
-    const options = {
-      watermark: 'highWaterMark: 1' // idk what this does, but the queue data has it, so i might as well add it in case someone needs it
-    }
-
+    const options = { watermark: 'highWaterMark: 1' } // idk what this does, but the queue data has it, so i might as well add it in case someone needs it
     // Check Input
-    if (!url) {
-      return console.log('Please insert a playlist url!')
-    }
-
+    if (!url) return console.log('Please insert a playlist url!')
     // Check Options
     if (data.seek) {
       options.seek = parseInt(this.evalMessage(data.seek, cache))
@@ -70,20 +64,21 @@ module.exports = {
     } else {
       options.bitrate = 'auto'
     }
-    if (msg) {
-      options.requester = msg.author
-    }
-    ytpl(url, { limit: maxvideos }).then((playlist) => {
+    if (msg) options.requester = msg.author
+    try {
+      const playlist = await ytpl(url, { limit: maxvideos })
       playlist.items.forEach((video) => {
         if (video.id !== undefined) {
           const title = video.title
-          const duration = parseInt(video.durationSec)
+          const duration = video.durationSec
           const thumbnail = video.bestThumbnail.url
           Audio.addToQueue(['yt', { ...options, title, duration, thumbnail }, video.shortUrl], cache)
         }
       })
-    })
-    this.callNextAction(cache)
+      this.callNextAction(cache)
+    } catch (err) {
+      this.displayError(data, cache, err)
+    }
   },
 
   mod () {}

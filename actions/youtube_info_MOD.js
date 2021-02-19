@@ -110,27 +110,27 @@ module.exports = {
   async action (cache) {
     const data = cache.actions[cache.index]
     const info = parseInt(data.info)
-    const _this = this
-    const video = this.evalMessage(data.video, cache)
+    const search = this.evalMessage(data.video, cache)
     const Mods = this.getMods()
     const ytsr = Mods.require('ytsr')
     const ytdl = Mods.require('ytdl-core')
     let result
 
-    if (!video) return console.log('Please specify a video to get video informations.')
-
-    ytsr(video, async function (err, searchResults) {
-      if (err) return console.error(err)
+    if (!search) return console.log('Please specify a video to get video informations.')
+    try {
+      const searchResults = await ytsr(search, { limit: 1 })
       const sr = searchResults.items[0]
-      let video = await ytdl.getBasicInfo(sr.link)
-      video = video.videoDetails
-
+      let video
+      if ([2, 3, 10, 11, 12, 13, 14, 16, 17, 20, 21, 22, 23, 26].includes(info)) {
+        video = await ytdl.getBasicInfo(sr.url)
+        video = video.videoDetails
+      }
       switch (info) {
         case 0: // Video ID
-          result = video.videoID
+          result = sr.id
           break
         case 1: // Video URL
-          result = video.video_url
+          result = sr.url
           break
         case 2: // Video Title
           result = video.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'")
@@ -139,13 +139,13 @@ module.exports = {
           result = video.description.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'")
           break
         case 4: // Video Channel Name
-          result = video.author.name
+          result = sr.author.name
           break
         case 5: // Video Channel ID
-          result = video.author.id
+          result = sr.author.channelID
           break
         case 6: // Thumbnail URL (auto)
-          result = sr.thumbnail
+          result = sr.bestThumbnail.url
           break
         case 10: // Is unlisted
           result = video.isUnlisted
@@ -157,7 +157,7 @@ module.exports = {
           result = video.lengthSeconds
           break
         case 13: // Video Views
-          result = video.views
+          result = video.viewCount
           break
         case 14: // Available Countries
           result = video.availableCountries
@@ -169,25 +169,25 @@ module.exports = {
           result = video.dislikes
           break
         case 19: // is live?
-          result = video.isLiveContent
+          result = sr.isLive
           break
         case 20: // Video Channel URL
-          result = video.author.ref
+          result = video.author.url
           break
         case 21: // Video Publish Date
           result = video.publishDate
           break
         case 22: // Is owner Viewing?
-          result = video.sOwnerViewing
+          result = video.isOwnerViewing
           break
         case 23: // Age Restricted?
           result = video.age_restricted
           break
         case 24: // Video Channel Avatar URL
-          result = video.author.avatar
+          result = sr.author.bestAvatar.url
           break
         case 25: // Is channel verified?
-          result = video.author.verified
+          result = sr.author.verified
           break
         case 26: // Video Channel Subscriber Count
           result = video.author.subscriber_count
@@ -195,14 +195,15 @@ module.exports = {
         default:
           break
       }
-
       if (result !== undefined) {
         const storage = parseInt(data.storage)
-        const varName2 = _this.evalMessage(data.varName, cache)
-        _this.storeValue(result, storage, varName2, cache)
+        const varName2 = this.evalMessage(data.varName, cache)
+        this.storeValue(result, storage, varName2, cache)
       }
-      _this.callNextAction(cache)
-    })
+      this.callNextAction(cache)
+    } catch (err) {
+      this.displayError(data, cache, err)
+    }
   },
 
   mod () {}

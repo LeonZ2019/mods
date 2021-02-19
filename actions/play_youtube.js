@@ -78,7 +78,7 @@ module.exports = {
 
         options.title = video.videoDetails.title
         options.duration = parseInt(video.videoDetails.lengthSeconds)
-        options.thumbnail = video.player_response.videoDetails.thumbnail.thumbnails[3].url
+        options.thumbnail = video.videoDetails.thumbnails[video.videoDetails.thumbnails.length - 1].url
 
         const info = ['yt', options, url]
         if (data.type === '0') {
@@ -89,7 +89,7 @@ module.exports = {
 
         Actions.callNextAction(cache)
       } catch (err) {
-        return this.displayError(data, cache, err)
+        this.displayError(data, cache, err)
       }
     }
 
